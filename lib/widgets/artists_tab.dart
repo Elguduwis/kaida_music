@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../services/music_library_service.dart';
+import '../providers/music_provider.dart';
 import '../models/song_model.dart';
 import 'song_list_tile.dart';
 

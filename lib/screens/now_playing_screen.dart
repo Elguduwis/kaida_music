@@ -39,7 +39,6 @@ class NowPlayingScreen extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(),
-            // Vinyl record animation (simplified rotating image)
             Container(
               width: 300,
               height: 300,
@@ -59,7 +58,7 @@ class NowPlayingScreen extends StatelessWidget {
                 duration: const Duration(seconds: 2),
                 builder: (context, value, child) {
                   return Transform.rotate(
-                    angle: value * 6.28318, // 2*pi
+                    angle: value * 6.28318,
                     child: child,
                   );
                 },
@@ -95,7 +94,6 @@ class NowPlayingScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 18, color: Colors.white70),
             ),
             const SizedBox(height: 30),
-            // Seek bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -123,7 +121,6 @@ class NowPlayingScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            // Controls
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -165,7 +162,7 @@ class NowPlayingScreen extends StatelessWidget {
                     color: Colors.white,
                     size: 28,
                   ),
-                  onPressed: _cycleRepeatMode,
+                  onPressed: () => _cycleRepeatMode(context),
                 ),
               ],
             ),
@@ -177,7 +174,9 @@ class NowPlayingScreen extends StatelessWidget {
   }
 
   String _formatDuration(Duration d) {
-    return '${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   IconData _repeatIcon(AudioServiceRepeatMode mode) {

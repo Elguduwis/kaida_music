@@ -55,14 +55,12 @@ class MusicLibraryService {
   }
 
   Future<bool> renameSong(SongModelExt song, String newName) async {
-    // On Android 10+ renaming requires special handling (MediaStore API)
-    // For simplicity, we'll show a toast that this is a demo limitation
-    // In production, use MediaStore or content resolver.
+    // Demo limitation
     return false;
   }
 
   Future<bool> deleteSong(String uri) async {
-    // Same as rename – demo limitation
+    // Demo limitation
     return false;
   }
 }

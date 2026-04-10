@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import '../models/song_model.dart';
 import '../services/music_library_service.dart';
 import '../services/audio_player_service.dart';
@@ -57,8 +58,14 @@ class MusicProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
-    _audioHandler!.player.durationStream.listen((d) {
-      _duration = d ?? Duration.zero;
+    // Listen to position updates
+    _audioHandler!.positionStream.listen((pos) {
+      _position = pos;
+      notifyListeners();
+    });
+    // Listen to duration updates
+    _audioHandler!.durationStream.listen((dur) {
+      _duration = dur ?? Duration.zero;
       notifyListeners();
     });
   }
@@ -86,9 +93,18 @@ class MusicProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> next() => _audioHandler?.skipToNext();
-  Future<void> previous() => _audioHandler?.skipToPrevious();
-  Future<void> seek(Duration position) => _audioHandler?.seek(position);
+  Future<void> next() async {
+    await _audioHandler?.skipToNext();
+  }
+
+  Future<void> previous() async {
+    await _audioHandler?.skipToPrevious();
+  }
+
+  Future<void> seek(Duration position) async {
+    await _audioHandler?.seek(position);
+  }
+
   Future<void> setRepeatMode(AudioServiceRepeatMode mode) async {
     await _audioHandler?.setRepeatMode(mode);
     _repeatMode = mode;
@@ -107,7 +123,6 @@ class MusicProvider extends ChangeNotifier {
   void removeFromQueue(int index) {
     if (index < 0 || index >= _currentQueue.length) return;
     _currentQueue.removeAt(index);
-    // Update audio handler queue
     _audioHandler?.updatePlaylist(_currentQueue, startIndex: _audioHandler!.currentIndex ?? 0);
     notifyListeners();
   }

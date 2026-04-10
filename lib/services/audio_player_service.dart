@@ -16,8 +16,14 @@ Future<AudioPlayerHandler> initAudioService() async {
 }
 
 class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
-  final _player = AudioPlayer();
-  final _playlist = ConcatenatingAudioSource(children: []);
+  final AudioPlayer _player = AudioPlayer();
+  final ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
+
+  // Expose streams for UI
+  Stream<Duration> get positionStream => _player.positionStream;
+  Stream<Duration?> get durationStream => _player.durationStream;
+  int? get currentIndex => _player.currentIndex;
+  List<AudioSource> get sequence => _player.sequence ?? [];
 
   AudioPlayerHandler() {
     _player.playbackEventStream.map(_transformEvent).pipe(playbackState);
@@ -94,7 +100,7 @@ class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> addQueueItem(MediaItem mediaItem) async {
-    // Not used directly; we manage playlist via custom methods
+    // Not used directly
   }
 
   Future<void> updatePlaylist(List<SongModelExt> songs, {int startIndex = 0}) async {
@@ -126,15 +132,6 @@ class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> onTaskRemoved() async {
-    // Android: Stop service when app is swiped away (optional)
     await stop();
   }
-
-  // Accessors for UI
-  int? get currentIndex => _player.currentIndex;
-  List<AudioSource> get sequence => _player.sequence ?? [];
-  Duration get position => _player.position;
-  bool get playing => _player.playing;
-  LoopMode get loopMode => _player.loopMode;
-  bool get shuffleModeEnabled => _player.shuffleModeEnabled;
 }
