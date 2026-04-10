@@ -34,19 +34,21 @@ class SongModelExt {
     );
   }
 
-  /// Fallback factory from a MediaItem (used when the original SongModel is not found)
+  /// Fallback for when the original SongModel is not available (e.g., from a MediaItem)
   factory SongModelExt.fromMediaItem(MediaItem item) {
-    // Create a minimal SongModel stub with required fields
-    final stubSong = SongModel(
-      int.tryParse(item.id) ?? -1,
-      item.title,
-      item.artist,
-      item.album,
-      item.duration?.inMilliseconds,
-      item.extras?['uri'] as String? ?? '',
-    );
+    // Use a minimal placeholder SongModel (no manual constructor call)
+    // We'll store the data directly in the wrapper; the 'song' field is just a stub.
+    // However, to satisfy the type, we use the empty constructor provided by the library.
+    final stub = SongModel({
+      '_id': int.tryParse(item.id) ?? -1,
+      'title': item.title,
+      'artist': item.artist,
+      'album': item.album,
+      'duration': item.duration?.inMilliseconds,
+      '_data': item.extras?['uri'] ?? '',
+    });
     return SongModelExt(
-      song: stubSong,
+      song: stub,
       displayName: item.title,
       artist: item.artist ?? 'Unknown Artist',
       album: item.album ?? 'Unknown Album',

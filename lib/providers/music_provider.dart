@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 import '../models/song_model.dart';
 import '../services/music_library_service.dart';
 import '../services/audio_player_service.dart';
@@ -18,6 +17,7 @@ class MusicProvider extends ChangeNotifier {
   AudioServiceRepeatMode _repeatMode = AudioServiceRepeatMode.none;
   bool _shuffleEnabled = false;
 
+  // Getters
   List<SongModelExt> get allSongs => _allSongs;
   List<SongModelExt> get currentQueue => _currentQueue;
   SongModelExt? get currentSong => _currentSong;
@@ -43,7 +43,7 @@ class MusicProvider extends ChangeNotifier {
     });
     _audioHandler!.mediaItem.listen((item) {
       if (item != null) {
-        // Try to find matching SongModelExt in already loaded songs
+        // Find matching song in loaded list
         final found = _allSongs.firstWhere(
           (s) => s.song.id.toString() == item.id,
           orElse: () => SongModelExt.fromMediaItem(item),
@@ -53,6 +53,7 @@ class MusicProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
+    // Use the streams exposed by our custom handler (not .player)
     _audioHandler!.positionStream.listen((pos) {
       _position = pos;
       notifyListeners();
@@ -116,7 +117,8 @@ class MusicProvider extends ChangeNotifier {
   void removeFromQueue(int index) {
     if (index < 0 || index >= _currentQueue.length) return;
     _currentQueue.removeAt(index);
-    _audioHandler?.updatePlaylist(_currentQueue, startIndex: _audioHandler!.currentIndex ?? 0);
+    _audioHandler?.updatePlaylist(_currentQueue,
+        startIndex: _audioHandler!.currentIndex ?? 0);
     notifyListeners();
   }
 }

@@ -6,11 +6,10 @@ class MusicLibraryService {
   final OnAudioQuery _audioQuery = OnAudioQuery();
 
   Future<bool> requestPermissions() async {
-    final status = await Permission.storage.request();
-    if (status.isGranted) {
-      return true;
-    }
-    return await Permission.audio.request().then((value) => value.isGranted);
+    final storage = await Permission.storage.request();
+    if (storage.isGranted) return true;
+    final audio = await Permission.audio.request();
+    return audio.isGranted;
   }
 
   Future<List<SongModelExt>> getAllSongs() async {
@@ -41,25 +40,9 @@ class MusicLibraryService {
     return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
   }
 
-  // Return a list of folder paths (as strings) instead of FolderModel
-  Future<List<String>> getFolderPaths() async {
-    final List<FolderModel> folders = await _audioQuery.queryAllPath();
-    return folders.map((f) => f.path).toList();
-  }
-
-  // Get folder name from path
-  String getFolderName(String path) {
-    final parts = path.split('/');
-    return parts.isNotEmpty ? parts.last : path;
-  }
-
-  // Count songs in folder (approximate)
-  Future<int> countSongsInFolder(String path) async {
-    final songs = await _audioQuery.querySongs(
-      path: path,
-      uriType: UriType.EXTERNAL,
-    );
-    return songs.length;
+  // Folder handling — FolderModel is exported by on_audio_query
+  Future<List<FolderModel>> getFolders() async {
+    return await _audioQuery.queryAllPath();
   }
 
   Future<List<SongModelExt>> getSongsFromFolder(String path) async {
@@ -71,13 +54,7 @@ class MusicLibraryService {
     return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
   }
 
-  Future<bool> renameSong(SongModelExt song, String newName) async {
-    // Demo limitation
-    return false;
-  }
-
-  Future<bool> deleteSong(String uri) async {
-    // Demo limitation
-    return false;
-  }
+  // Demo limitations (will show snackbar in UI)
+  Future<bool> renameSong(SongModelExt song, String newName) async => false;
+  Future<bool> deleteSong(String uri) async => false;
 }

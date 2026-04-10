@@ -15,7 +15,7 @@ class FoldersTab extends StatefulWidget {
 
 class _FoldersTabState extends State<FoldersTab> {
   final MusicLibraryService _service = MusicLibraryService();
-  List<String> _folderPaths = [];
+  List<FolderModel> _folders = [];
   bool _loading = true;
 
   @override
@@ -26,9 +26,9 @@ class _FoldersTabState extends State<FoldersTab> {
 
   Future<void> _loadFolders() async {
     if (await _service.requestPermissions()) {
-      final paths = await _service.getFolderPaths();
+      final folders = await _service.getFolders();
       setState(() {
-        _folderPaths = paths;
+        _folders = folders;
         _loading = false;
       });
     }
@@ -38,33 +38,26 @@ class _FoldersTabState extends State<FoldersTab> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     return ListView.builder(
-      itemCount: _folderPaths.length,
+      itemCount: _folders.length,
       itemBuilder: (context, index) {
-        final path = _folderPaths[index];
-        final name = _service.getFolderName(path);
-        return FutureBuilder<int>(
-          future: _service.countSongsInFolder(path),
-          builder: (ctx, snapshot) {
-            final count = snapshot.data ?? 0;
-            return ListTile(
-              leading: const Icon(Icons.folder),
-              title: Text(name),
-              subtitle: Text('$count songs'),
-              onTap: () => _showFolderSongs(path),
-            );
-          },
+        final folder = _folders[index];
+        return ListTile(
+          leading: const Icon(Icons.folder),
+          title: Text(folder.folderName),
+          subtitle: Text('${folder.numOfSongs} songs'),
+          onTap: () => _showFolderSongs(folder),
         );
       },
     );
   }
 
-  void _showFolderSongs(String folderPath) async {
-    final songs = await _service.getSongsFromFolder(folderPath);
+  void _showFolderSongs(FolderModel folder) async {
+    final songs = await _service.getSongsFromFolder(folder.path);
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(_service.getFolderName(folderPath))),
+          appBar: AppBar(title: Text(folder.folderName)),
           body: ListView.builder(
             itemCount: songs.length,
             itemBuilder: (ctx, i) {
