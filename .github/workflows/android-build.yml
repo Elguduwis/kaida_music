@@ -20,22 +20,33 @@ jobs:
       with:
         channel: 'stable'
 
-    # Create Android platform files (ONLY in cloud)
     - run: flutter create --platforms=android .
 
     - run: flutter pub get
 
-    # Patch the on_audio_query_android plugin to add missing namespace
-    - name: Fix Android namespace for on_audio_query_android
+    # Fix on_audio_query_android namespace issue
+    - name: Patch on_audio_query_android plugin
       run: |
-        PLUGIN_DIR="$HOME/.pub-cache/hosted/pub.dev/on_audio_query_android-*"
-        BUILD_FILE="$PLUGIN_DIR/android/build.gradle"
-        if [ -f "$BUILD_FILE" ]; then
-          # Check if namespace already exists
-          if ! grep -q "namespace" "$BUILD_FILE"; then
-            # Add namespace line after 'android {' block
-            sed -i '/android {/a \    namespace "com.lucasjosino.on_audio_query"' "$BUILD_FILE"
+        # Locate the plugin directory
+        PLUGIN_PATH=$(find ~/.pub-cache -type d -path "*/on_audio_query_android-*" | head -1)
+        if [ -d "$PLUGIN_PATH" ]; then
+          GRADLE_FILE="$PLUGIN_PATH/android/build.gradle"
+          echo "Patching $GRADLE_FILE"
+          
+          # Check if namespace already present
+          if grep -q "namespace" "$GRADLE_FILE"; then
+            echo "Namespace already exists. Skipping."
+          else
+            # Insert 'namespace "com.lucasjosino.on_audio_query"' after 'android {' line
+            sed -i '/^android {/a \    namespace "com.lucasjosino.on_audio_query"' "$GRADLE_FILE"
+            echo "Namespace added."
           fi
+          
+          # Verify
+          cat "$GRADLE_FILE" | head -20
+        else
+          echo "Plugin directory not found!"
+          exit 1
         fi
 
     - run: flutter build apk --release
