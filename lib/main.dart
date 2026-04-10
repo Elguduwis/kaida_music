@@ -62,11 +62,13 @@ class _PermissionGateState extends State<PermissionGate> {
   }
 
   Future<void> _checkAndRequestPermissions() async {
-    // Check current status
-    var status = await Permission.storage.status;
+    setState(() {
+      _isLoading = true;
+    });
+
+    final audioStatus = await Permission.audio.status;
     
-    if (status.isGranted) {
-      // Already have permission, load songs
+    if (audioStatus.isGranted) {
       setState(() {
         _hasPermission = true;
         _isLoading = false;
@@ -75,8 +77,7 @@ class _PermissionGateState extends State<PermissionGate> {
       return;
     }
 
-    // Request permission
-    final result = await Permission.storage.request();
+    final result = await Permission.audio.request();
     
     if (result.isGranted) {
       setState(() {
@@ -85,13 +86,11 @@ class _PermissionGateState extends State<PermissionGate> {
       });
       _loadMusic();
     } else if (result.isPermanentlyDenied) {
-      // Show dialog explaining how to enable in settings
       setState(() {
         _isLoading = false;
       });
       _showSettingsDialog();
     } else {
-      // Denied but not permanently
       setState(() {
         _isLoading = false;
       });
@@ -109,10 +108,10 @@ class _PermissionGateState extends State<PermissionGate> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Storage Permission Required'),
+        title: const Text('Permission Required'),
         content: const Text(
-          'Kaida Music needs access to your storage to find and play music files. '
-          'Please enable storage permission in app settings.',
+          'Kaida Music needs access to your audio files to play music. '
+          'Please enable the "Music and audio" permission in app settings.',
         ),
         actions: [
           TextButton(
@@ -150,13 +149,13 @@ class _PermissionGateState extends State<PermissionGate> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(
-                  Icons.folder_off,
+                  Icons.music_off,
                   size: 80,
                   color: Colors.grey,
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Storage Permission Required',
+                  'Music & Audio Permission Required',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -165,7 +164,7 @@ class _PermissionGateState extends State<PermissionGate> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Kaida Music needs access to your device storage to find and play your music files.',
+                  'Kaida Music needs access to your audio files to find and play your music.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),

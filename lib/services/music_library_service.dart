@@ -6,10 +6,14 @@ class MusicLibraryService {
   final OnAudioQuery _audioQuery = OnAudioQuery();
 
   Future<bool> requestPermissions() async {
-    final storage = await Permission.storage.request();
-    if (storage.isGranted) return true;
-    final audio = await Permission.audio.request();
-    return audio.isGranted;
+    final audioStatus = await Permission.audio.status;
+    
+    if (audioStatus.isGranted) {
+      return true;
+    }
+    
+    final result = await Permission.audio.request();
+    return result.isGranted;
   }
 
   Future<List<SongModelExt>> getAllSongs() async {
@@ -40,7 +44,6 @@ class MusicLibraryService {
     return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
   }
 
-  // Return folder paths as strings (bypass FolderModel type issues)
   Future<List<String>> getFolderPaths() async {
     final List<dynamic> raw = await _audioQuery.queryAllPath();
     return raw.map((e) => (e as dynamic).path as String).toList();
@@ -55,7 +58,6 @@ class MusicLibraryService {
     return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
   }
 
-  // Demo limitations
   Future<bool> renameSong(SongModelExt song, String newName) async => false;
   Future<bool> deleteSong(String uri) async => false;
 }
