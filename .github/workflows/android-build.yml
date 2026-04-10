@@ -24,7 +24,7 @@ jobs:
 
     - run: flutter pub get
 
-    # Fix on_audio_query_android namespace (still needed)
+    # Fix on_audio_query_android namespace
     - name: Patch on_audio_query_android plugin (namespace)
       run: |
         PLUGIN_PATH=$(find ~/.pub-cache -type d -path "*/on_audio_query_android-*" | head -1)
@@ -41,37 +41,19 @@ jobs:
           exit 1
         fi
 
-    # Fix JVM target compatibility for Kotlin and Java
+    # Fix JVM target compatibility using modern compilerOptions DSL
     - name: Align Kotlin JVM target to 1.8
       run: |
-        # For projects using build.gradle.kts (Flutter default)
-        if [ -f android/build.gradle.kts ]; then
-          # Add subprojects block to set Kotlin JVM target
-          cat >> android/build.gradle.kts << 'EOF'
+        cat >> android/build.gradle.kts << 'EOF'
 
-        subprojects {
+        allprojects {
             tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                kotlinOptions {
-                    jvmTarget = "1.8"
+                compilerOptions {
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
                 }
             }
         }
         EOF
-        fi
-        
-        # Also handle legacy build.gradle (just in case)
-        if [ -f android/build.gradle ]; then
-          cat >> android/build.gradle << 'EOF'
-
-        subprojects {
-            tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                kotlinOptions {
-                    jvmTarget = "1.8"
-                }
-            }
-        }
-        EOF
-        fi
 
     - run: flutter build apk --release
 
