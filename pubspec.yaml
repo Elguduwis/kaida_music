@@ -1,5 +1,5 @@
 name: kaida_music
-description: A music streaming app built via Termux + GitHub Actions
+description: A Flutter music app built via Termux + GitHub Actions
 publish_to: "none"
 
 environment:
@@ -8,12 +8,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.6
-  audioplayers: ^5.2.1
-  assets_audio_player: ^3.1.1
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/images/
-    - assets/music/

@@ -20,7 +20,7 @@ jobs:
       with:
         channel: 'stable'
 
-    # Flutter commands run ONLY in cloud
+    # Flutter commands ONLY run in the cloud
     - run: flutter create --platforms=android .
 
     - run: flutter pub get
@@ -29,5 +29,5 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: KaidaMusic-APK
+        name: Kaida-Music-APK
         path: build/app/outputs/flutter-apk/app-release.apk
