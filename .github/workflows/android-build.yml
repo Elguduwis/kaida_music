@@ -35,7 +35,7 @@ jobs:
           fi
         fi
 
-    # Configure gradle.properties for JVM target validation
+    # Configure gradle.properties
     - name: Configure gradle.properties
       run: |
         cat > android/gradle.properties << 'PROPS'
@@ -45,7 +45,7 @@ jobs:
         kotlin.jvm.target.validation.mode=warning
         PROPS
 
-    # Configure toolchain in app/build.gradle.kts
+    # Configure toolchain
     - name: Configure Java toolchain
       run: |
         cat >> android/app/build.gradle.kts << 'GRADLE'
@@ -71,47 +71,38 @@ jobs:
         }
         ROOT
 
-    # Update AndroidManifest.xml with proper permissions
-    - name: Configure Android permissions
+    # Patch the generated AndroidManifest.xml (don't replace it entirely)
+    - name: Add required permissions to AndroidManifest.xml
       run: |
-        cat > android/app/src/main/AndroidManifest.xml << 'MANIFEST'
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-            <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-            <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-            <uses-permission android:name="android.permission.WAKE_LOCK"/>
-            
-            <application
-                android:label="Kaida Music"
-                android:name="\${applicationName}"
-                android:icon="@mipmap/ic_launcher"
-                android:requestLegacyExternalStorage="true">
-                
-                <activity
-                    android:name=".MainActivity"
-                    android:exported="true"
-                    android:launchMode="singleTop"
-                    android:theme="@style/LaunchTheme"
-                    android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-                    android:hardwareAccelerated="true"
-                    android:windowSoftInputMode="adjustResize">
-                    <meta-data
-                      android:name="io.flutter.embedding.android.NormalTheme"
-                      android:resource="@style/NormalTheme"
-                      />
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN"/>
-                        <category android:name="android.intent.category.LAUNCHER"/>
-                    </intent-filter>
-                </activity>
-                
-                <meta-data
-                    android:name="flutterEmbedding"
-                    android:value="2" />
-            </application>
-        </manifest>
-        MANIFEST
+        MANIFEST="android/app/src/main/AndroidManifest.xml"
+        
+        # Add READ_MEDIA_AUDIO permission if not present
+        if ! grep -q "READ_MEDIA_AUDIO" "$MANIFEST"; then
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />' "$MANIFEST"
+        fi
+        
+        # Add POST_NOTIFICATIONS permission if not present
+        if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST"; then
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />' "$MANIFEST"
+        fi
+        
+        # Add FOREGROUND_SERVICE permission if not present
+        if ! grep -q "FOREGROUND_SERVICE" "$MANIFEST"; then
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />' "$MANIFEST"
+        fi
+        
+        # Add WAKE_LOCK permission if not present
+        if ! grep -q "WAKE_LOCK" "$MANIFEST"; then
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.WAKE_LOCK" />' "$MANIFEST"
+        fi
+        
+        # Add requestLegacyExternalStorage to application tag
+        if ! grep -q "requestLegacyExternalStorage" "$MANIFEST"; then
+          sed -i 's/<application/<application android:requestLegacyExternalStorage="true"/' "$MANIFEST"
+        fi
+        
+        echo "Updated AndroidManifest.xml:"
+        cat "$MANIFEST"
 
     - run: flutter build apk --release
 
