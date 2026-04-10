@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 import '../services/music_library_service.dart';
 import '../providers/music_provider.dart';
 import '../models/song_model.dart';
@@ -15,7 +14,7 @@ class FoldersTab extends StatefulWidget {
 
 class _FoldersTabState extends State<FoldersTab> {
   final MusicLibraryService _service = MusicLibraryService();
-  List<FolderModel> _folders = [];
+  List<String> _folderPaths = [];
   bool _loading = true;
 
   @override
@@ -26,38 +25,50 @@ class _FoldersTabState extends State<FoldersTab> {
 
   Future<void> _loadFolders() async {
     if (await _service.requestPermissions()) {
-      final folders = await _service.getFolders();
+      final paths = await _service.getFolderPaths();
       setState(() {
-        _folders = folders;
+        _folderPaths = paths;
         _loading = false;
       });
     }
+  }
+
+  String _getFolderName(String path) {
+    final parts = path.split('/');
+    return parts.isNotEmpty ? parts.last : path;
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     return ListView.builder(
-      itemCount: _folders.length,
+      itemCount: _folderPaths.length,
       itemBuilder: (context, index) {
-        final folder = _folders[index];
-        return ListTile(
-          leading: const Icon(Icons.folder),
-          title: Text(folder.folderName),
-          subtitle: Text('${folder.numOfSongs} songs'),
-          onTap: () => _showFolderSongs(folder),
+        final path = _folderPaths[index];
+        final name = _getFolderName(path);
+        return FutureBuilder<List<SongModelExt>>(
+          future: _service.getSongsFromFolder(path),
+          builder: (ctx, snapshot) {
+            final count = snapshot.data?.length ?? 0;
+            return ListTile(
+              leading: const Icon(Icons.folder),
+              title: Text(name),
+              subtitle: Text('$count songs'),
+              onTap: () => _showFolderSongs(path),
+            );
+          },
         );
       },
     );
   }
 
-  void _showFolderSongs(FolderModel folder) async {
-    final songs = await _service.getSongsFromFolder(folder.path);
+  void _showFolderSongs(String folderPath) async {
+    final songs = await _service.getSongsFromFolder(folderPath);
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(folder.folderName)),
+          appBar: AppBar(title: Text(_getFolderName(folderPath))),
           body: ListView.builder(
             itemCount: songs.length,
             itemBuilder: (ctx, i) {

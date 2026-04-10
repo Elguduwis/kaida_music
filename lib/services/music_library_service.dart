@@ -40,9 +40,10 @@ class MusicLibraryService {
     return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
   }
 
-  // Folder handling — FolderModel is exported by on_audio_query
-  Future<List<FolderModel>> getFolders() async {
-    return await _audioQuery.queryAllPath();
+  // Return folder paths as strings (bypass FolderModel type issues)
+  Future<List<String>> getFolderPaths() async {
+    final List<dynamic> raw = await _audioQuery.queryAllPath();
+    return raw.map((e) => (e as dynamic).path as String).toList();
   }
 
   Future<List<SongModelExt>> getSongsFromFolder(String path) async {
@@ -54,7 +55,7 @@ class MusicLibraryService {
     return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
   }
 
-  // Demo limitations (will show snackbar in UI)
+  // Demo limitations
   Future<bool> renameSong(SongModelExt song, String newName) async => false;
   Future<bool> deleteSong(String uri) async => false;
 }
