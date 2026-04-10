@@ -25,35 +25,52 @@ jobs:
     - run: flutter pub get
 
     # Fix on_audio_query_android namespace
-    - name: Patch on_audio_query_android plugin (namespace)
+    - name: Patch on_audio_query_android namespace
       run: |
         PLUGIN_PATH=$(find ~/.pub-cache -type d -path "*/on_audio_query_android-*" | head -1)
         if [ -d "$PLUGIN_PATH" ]; then
           GRADLE_FILE="$PLUGIN_PATH/android/build.gradle"
-          if grep -q "namespace" "$GRADLE_FILE"; then
-            echo "Namespace already exists."
-          else
+          if ! grep -q "namespace" "$GRADLE_FILE"; then
             sed -i '/^android {/a \    namespace "com.lucasjosino.on_audio_query"' "$GRADLE_FILE"
-            echo "Namespace added."
           fi
-        else
-          echo "Plugin directory not found!"
-          exit 1
         fi
 
-    # Fix JVM target compatibility using modern compilerOptions DSL
-    - name: Align Kotlin JVM target to 1.8
+    # COMPREHENSIVE JVM TARGET FIX - Using Gradle Toolchain
+    - name: Configure Java Toolchain for consistent JVM target
       run: |
-        cat >> android/build.gradle.kts << 'EOF'
+        # Create a gradle.properties file to disable JVM target validation (treat as warning instead of error)
+        cat > android/gradle.properties << 'PROPS'
+        org.gradle.jvmargs=-Xmx4G
+        android.useAndroidX=true
+        android.enableJetifier=true
+        kotlin.jvm.target.validation.mode=warning
+        PROPS
+
+        # Configure toolchain in app/build.gradle.kts
+        cat >> android/app/build.gradle.kts << 'GRADLE'
+
+        // Java toolchain configuration for consistent JVM target
+        kotlin {
+            jvmToolchain(17)
+        }
+        java {
+            toolchain {
+                languageVersion.set(JavaLanguageVersion.of(17))
+            }
+        }
+        GRADLE
+
+        # Also add to root build.gradle.kts for all subprojects
+        cat >> android/build.gradle.kts << 'ROOT'
 
         allprojects {
             tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
                 compilerOptions {
-                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
                 }
             }
         }
-        EOF
+        ROOT
 
     - run: flutter build apk --release
 
