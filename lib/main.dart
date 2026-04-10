@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'providers/music_provider.dart';
 import 'screens/home_screen.dart';
-import 'services/music_library_service.dart';
 
 void main() {
   runApp(const KaidaMusicApp());
@@ -32,6 +32,11 @@ class KaidaMusicApp extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+            backgroundColor: Colors.white,
+            selectedItemColor: Colors.red,
+            unselectedItemColor: Colors.grey,
+          ),
         ),
         home: const PermissionGate(),
       ),
@@ -49,37 +54,68 @@ class PermissionGate extends StatefulWidget {
 class _PermissionGateState extends State<PermissionGate> {
   bool _isLoading = true;
   bool _hasPermission = false;
-  final MusicLibraryService _service = MusicLibraryService();
+  bool _audioReady = false;
 
   @override
   void initState() {
     super.initState();
-    _requestPermission();
+    _initialize();
   }
 
-  Future<void> _requestPermission() async {
+  Future<void> _initialize() async {
+    // Wait for audio service to be ready
+    final provider = context.read<MusicProvider>();
+    
+    // Poll until audio service is ready or timeout
+    int retries = 0;
+    while (!provider.audioServiceReady && retries < 100) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      retries++;
+    }
+    
+    if (!provider.audioServiceReady) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+    
+    setState(() {
+      _audioReady = true;
+    });
+    
+    await _checkAndRequestPermissions();
+  }
+
+  Future<void> _checkAndRequestPermissions() async {
     setState(() {
       _isLoading = true;
     });
 
-    // Use the plugin's built-in permission request
-    final hasPermission = await _service.requestPermissions();
+    final audioStatus = await Permission.audio.status;
+    final storageStatus = await Permission.storage.status;
     
-    if (!hasPermission) {
-      // Try the alternative method with retry
-      final retryPermission = await _service.checkAndRequestPermissions(retry: true);
-      setState(() {
-        _hasPermission = retryPermission;
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _hasPermission = true;
-        _isLoading = false;
-      });
+    print('Audio status: $audioStatus');
+    print('Storage status: $storageStatus');
+
+    bool granted = audioStatus.isGranted || storageStatus.isGranted;
+    
+    if (!granted) {
+      // Request both permissions
+      final results = await [
+        Permission.audio.request(),
+        Permission.storage.request(),
+      ].wait;
+      
+      granted = results.any((r) => r.isGranted);
     }
 
-    if (_hasPermission) {
+    setState(() {
+      _hasPermission = granted;
+      _isLoading = false;
+    });
+
+    if (granted) {
       _loadMusic();
     }
   }
@@ -100,7 +136,30 @@ class _PermissionGateState extends State<PermissionGate> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 20),
-              Text('Requesting permissions...'),
+              Text('Initializing Kaida Music...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_audioReady) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.red),
+              SizedBox(height: 20),
+              Text(
+                'Failed to initialize audio service',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Please restart the app',
+                style: TextStyle(color: Colors.grey),
+              ),
             ],
           ),
         ),
@@ -115,28 +174,32 @@ class _PermissionGateState extends State<PermissionGate> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.folder_off, size: 80, color: Colors.grey),
+                const Icon(Icons.music_off, size: 80, color: Colors.grey),
                 const SizedBox(height: 20),
                 const Text(
-                  'Storage Permission Required',
+                  'Permission Required',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Kaida Music needs access to your device storage to find and play music files.',
+                  'Kaida Music needs access to your audio files to find and play your music.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(
-                  onPressed: _requestPermission,
+                  onPressed: _checkAndRequestPermissions,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE53935),
+                    backgroundColor: Color(0xFFE53935),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                   ),
                   child: const Text('Grant Permission'),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => openAppSettings(),
+                  child: const Text('Open App Settings'),
                 ),
               ],
             ),

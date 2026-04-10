@@ -18,6 +18,7 @@ class MusicProvider extends ChangeNotifier {
   bool _shuffleEnabled = false;
   bool _isLoading = false;
   String? _error;
+  bool _audioServiceReady = false;
 
   // Getters
   List<SongModelExt> get allSongs => _allSongs;
@@ -31,47 +32,77 @@ class MusicProvider extends ChangeNotifier {
   AudioPlayerHandler? get audioHandler => _audioHandler;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get audioServiceReady => _audioServiceReady;
 
   MusicProvider() {
-    _initAudioHandler();
+    _initAudioService();
   }
 
-  Future<void> _initAudioHandler() async {
-    _audioHandler = await initAudioService();
-    _audioHandler!.playbackState.listen((state) {
-      _isPlaying = state.playing;
-      _position = state.position;
-      _repeatMode = state.repeatMode;
-      _shuffleEnabled = state.shuffleMode == AudioServiceShuffleMode.all;
-      notifyListeners();
-    });
-    _audioHandler!.mediaItem.listen((item) {
-      if (item != null) {
-        final found = _allSongs.firstWhere(
-          (s) => s.song.id.toString() == item.id,
-          orElse: () => SongModelExt.fromMediaItem(item),
-        );
-        _currentSong = found;
-        _duration = item.duration ?? Duration.zero;
+  Future<void> _initAudioService() async {
+    try {
+      print('Initializing Audio Service...');
+      _audioHandler = await initAudioService();
+      _audioServiceReady = true;
+      print('Audio Service initialized successfully');
+      
+      _audioHandler!.playbackState.listen((state) {
+        _isPlaying = state.playing;
+        _position = state.position;
+        _repeatMode = state.repeatMode;
+        _shuffleEnabled = state.shuffleMode == AudioServiceShuffleMode.all;
         notifyListeners();
-      }
-    });
-    _audioHandler!.positionStream.listen((pos) {
-      _position = pos;
+      });
+      
+      _audioHandler!.mediaItem.listen((item) {
+        if (item != null) {
+          final found = _allSongs.firstWhere(
+            (s) => s.song.id.toString() == item.id,
+            orElse: () => SongModelExt.fromMediaItem(item),
+          );
+          _currentSong = found;
+          _duration = item.duration ?? Duration.zero;
+          notifyListeners();
+        }
+      });
+      
+      _audioHandler!.positionStream.listen((pos) {
+        _position = pos;
+        notifyListeners();
+      });
+      
+      _audioHandler!.durationStream.listen((dur) {
+        _duration = dur ?? Duration.zero;
+        notifyListeners();
+      });
+      
       notifyListeners();
-    });
-    _audioHandler!.durationStream.listen((dur) {
-      _duration = dur ?? Duration.zero;
+    } catch (e) {
+      print('Error initializing audio service: $e');
+      _error = 'Failed to initialize audio: $e';
       notifyListeners();
-    });
+    }
   }
 
   Future<void> loadSongs() async {
+    // Wait for audio service to be ready
+    int retries = 0;
+    while (!_audioServiceReady && retries < 50) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      retries++;
+    }
+    
+    if (!_audioServiceReady) {
+      _error = 'Audio service not ready';
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      print('Loading songs...');
       final hasPermission = await _libraryService.requestPermissions();
       if (!hasPermission) {
         _error = 'Storage permission denied';
@@ -81,8 +112,10 @@ class MusicProvider extends ChangeNotifier {
       }
 
       _allSongs = await _libraryService.getAllSongs();
+      print('Loaded ${_allSongs.length} songs');
       _error = null;
     } catch (e) {
+      print('Error loading songs: $e');
       _error = 'Failed to load songs: $e';
     } finally {
       _isLoading = false;
@@ -91,12 +124,14 @@ class MusicProvider extends ChangeNotifier {
   }
 
   Future<void> playSong(SongModelExt song, {List<SongModelExt>? queue}) async {
+    if (_audioHandler == null) return;
+    
     final queueToPlay = queue ?? _allSongs;
     final startIndex = queueToPlay.indexWhere((s) => s.song.id == song.song.id);
     if (startIndex == -1) return;
     
     _currentQueue = queueToPlay;
-    await _audioHandler?.updatePlaylist(queueToPlay, startIndex: startIndex);
+    await _audioHandler!.updatePlaylist(queueToPlay, startIndex: startIndex);
     notifyListeners();
   }
 
