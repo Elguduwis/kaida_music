@@ -41,8 +41,25 @@ class MusicLibraryService {
     return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
   }
 
-  Future<List<FolderModel>> getFolders() async {
-    return await _audioQuery.queryAllPath();
+  // Return a list of folder paths (as strings) instead of FolderModel
+  Future<List<String>> getFolderPaths() async {
+    final List<FolderModel> folders = await _audioQuery.queryAllPath();
+    return folders.map((f) => f.path).toList();
+  }
+
+  // Get folder name from path
+  String getFolderName(String path) {
+    final parts = path.split('/');
+    return parts.isNotEmpty ? parts.last : path;
+  }
+
+  // Count songs in folder (approximate)
+  Future<int> countSongsInFolder(String path) async {
+    final songs = await _audioQuery.querySongs(
+      path: path,
+      uriType: UriType.EXTERNAL,
+    );
+    return songs.length;
   }
 
   Future<List<SongModelExt>> getSongsFromFolder(String path) async {

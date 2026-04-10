@@ -43,27 +43,20 @@ class MusicProvider extends ChangeNotifier {
     });
     _audioHandler!.mediaItem.listen((item) {
       if (item != null) {
-        _currentSong = _allSongs.firstWhere(
+        // Try to find matching SongModelExt in already loaded songs
+        final found = _allSongs.firstWhere(
           (s) => s.song.id.toString() == item.id,
-          orElse: () => SongModelExt.fromSongModel(SongModel(
-            id: int.parse(item.id),
-            title: item.title,
-            artist: item.artist,
-            album: item.album,
-            duration: item.duration?.inMilliseconds,
-            uri: item.extras?['uri'],
-          )),
+          orElse: () => SongModelExt.fromMediaItem(item),
         );
+        _currentSong = found;
         _duration = item.duration ?? Duration.zero;
         notifyListeners();
       }
     });
-    // Listen to position updates
     _audioHandler!.positionStream.listen((pos) {
       _position = pos;
       notifyListeners();
     });
-    // Listen to duration updates
     _audioHandler!.durationStream.listen((dur) {
       _duration = dur ?? Duration.zero;
       notifyListeners();

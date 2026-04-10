@@ -1,4 +1,5 @@
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:audio_service/audio_service.dart';
 
 class SongModelExt {
   final SongModel song;
@@ -33,7 +34,28 @@ class SongModelExt {
     );
   }
 
-  // For queue items (used by audio_service)
+  /// Fallback factory from a MediaItem (used when the original SongModel is not found)
+  factory SongModelExt.fromMediaItem(MediaItem item) {
+    // Create a minimal SongModel stub with required fields
+    final stubSong = SongModel(
+      int.tryParse(item.id) ?? -1,
+      item.title,
+      item.artist,
+      item.album,
+      item.duration?.inMilliseconds,
+      item.extras?['uri'] as String? ?? '',
+    );
+    return SongModelExt(
+      song: stubSong,
+      displayName: item.title,
+      artist: item.artist ?? 'Unknown Artist',
+      album: item.album ?? 'Unknown Album',
+      artworkPath: item.artUri?.toString(),
+      duration: item.duration ?? Duration.zero,
+      uri: item.extras?['uri'] as String? ?? '',
+    );
+  }
+
   Map<String, dynamic> toMediaItem() {
     return {
       'id': song.id.toString(),
