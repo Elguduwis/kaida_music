@@ -28,5 +28,9 @@ dependencies:
   cached_network_image: ^3.3.1
   flutter_slidable: ^3.0.1
 
+dependency_overrides:
+  # Force newer version that includes Android namespace fix
+  on_audio_query_android: ^1.2.0
+
 flutter:
   uses-material-design: true
