@@ -6,24 +6,49 @@ class MusicLibraryService {
   final OnAudioQuery _audioQuery = OnAudioQuery();
 
   Future<bool> requestPermissions() async {
-    final audioStatus = await Permission.audio.status;
+    print('=== MusicLibraryService: Requesting permissions ===');
     
-    if (audioStatus.isGranted) {
+    // Check current states
+    final audioStatus = await Permission.audio.status;
+    final storageStatus = await Permission.storage.status;
+    
+    print('Current audio status: $audioStatus');
+    print('Current storage status: $storageStatus');
+    
+    // If already granted, return true
+    if (audioStatus.isGranted || storageStatus.isGranted) {
+      print('Permission already granted');
       return true;
     }
     
-    final result = await Permission.audio.request();
-    return result.isGranted;
+    // Try audio permission
+    print('Requesting audio permission...');
+    final audioResult = await Permission.audio.request();
+    print('Audio request result: $audioResult');
+    if (audioResult.isGranted) return true;
+    
+    // Try storage permission as fallback
+    print('Requesting storage permission...');
+    final storageResult = await Permission.storage.request();
+    print('Storage request result: $storageResult');
+    return storageResult.isGranted;
   }
 
   Future<List<SongModelExt>> getAllSongs() async {
-    final List<SongModel> songs = await _audioQuery.querySongs(
-      sortType: SongSortType.TITLE,
-      orderType: OrderType.ASC_OR_SMALLER,
-      uriType: UriType.EXTERNAL,
-      ignoreCase: true,
-    );
-    return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
+    print('=== Getting all songs ===');
+    try {
+      final List<SongModel> songs = await _audioQuery.querySongs(
+        sortType: SongSortType.TITLE,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
+      );
+      print('Found ${songs.length} songs');
+      return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
+    } catch (e) {
+      print('Error getting songs: $e');
+      return [];
+    }
   }
 
   Future<List<ArtistModel>> getArtists() async {

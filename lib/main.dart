@@ -32,11 +32,6 @@ class KaidaMusicApp extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-            backgroundColor: Colors.white,
-            selectedItemColor: Colors.red,
-            unselectedItemColor: Colors.grey,
-          ),
         ),
         home: const PermissionGate(),
       ),
@@ -54,6 +49,7 @@ class PermissionGate extends StatefulWidget {
 class _PermissionGateState extends State<PermissionGate> {
   bool _isLoading = true;
   bool _hasPermission = false;
+  String _debugInfo = '';
 
   @override
   void initState() {
@@ -66,34 +62,57 @@ class _PermissionGateState extends State<PermissionGate> {
       _isLoading = true;
     });
 
+    // Check all relevant permission states
     final audioStatus = await Permission.audio.status;
+    final storageStatus = await Permission.storage.status;
+    final mediaStatus = await Permission.mediaLibrary.status;
     
+    _debugInfo = '''
+Audio: $audioStatus
+Storage: $storageStatus
+Media: $mediaStatus
+    ''';
+
+    print('Permission Statuses:');
+    print('Audio: $audioStatus');
+    print('Storage: $storageStatus');
+    print('Media: $mediaStatus');
+
+    // Try multiple permission approaches
+    bool granted = false;
+    
+    // Try audio first
     if (audioStatus.isGranted) {
-      setState(() {
-        _hasPermission = true;
-        _isLoading = false;
-      });
-      _loadMusic();
-      return;
+      granted = true;
+    } else {
+      final audioResult = await Permission.audio.request();
+      print('Audio request result: $audioResult');
+      if (audioResult.isGranted) granted = true;
+    }
+    
+    // If audio didn't work, try storage
+    if (!granted) {
+      final storageResult = await Permission.storage.request();
+      print('Storage request result: $storageResult');
+      if (storageResult.isGranted) granted = true;
+    }
+    
+    // Last resort: try mediaLibrary
+    if (!granted) {
+      final mediaResult = await Permission.mediaLibrary.request();
+      print('Media request result: $mediaResult');
+      if (mediaResult.isGranted) granted = true;
     }
 
-    final result = await Permission.audio.request();
-    
-    if (result.isGranted) {
-      setState(() {
-        _hasPermission = true;
-        _isLoading = false;
-      });
+    setState(() {
+      _hasPermission = granted;
+      _isLoading = false;
+    });
+
+    if (granted) {
       _loadMusic();
-    } else if (result.isPermanentlyDenied) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showSettingsDialog();
     } else {
-      setState(() {
-        _isLoading = false;
-      });
+      print('All permission requests denied');
     }
   }
 
@@ -103,39 +122,23 @@ class _PermissionGateState extends State<PermissionGate> {
     });
   }
 
-  void _showSettingsDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Permission Required'),
-        content: const Text(
-          'Kaida Music needs access to your audio files to play music. '
-          'Please enable the "Music and audio" permission in app settings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              openAppSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 20),
+              Text(
+                'Checking permissions...\n$_debugInfo',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -148,38 +151,21 @@ class _PermissionGateState extends State<PermissionGate> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.music_off,
-                  size: 80,
-                  color: Colors.grey,
-                ),
+                const Icon(Icons.music_off, size: 80, color: Colors.grey),
                 const SizedBox(height: 20),
                 const Text(
-                  'Music & Audio Permission Required',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+                  'Permission Status',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Kaida Music needs access to your audio files to find and play your music.',
+                Text(
+                  _debugInfo,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(
                   onPressed: _checkAndRequestPermissions,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE53935),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Grant Permission'),
+                  child: const Text('Retry'),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
