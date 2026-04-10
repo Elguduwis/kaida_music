@@ -1,5 +1,5 @@
 name: kaida_music
-description: A Flutter music app built via Termux + GitHub Actions
+description: A professional offline music player built via Termux + GitHub Actions
 publish_to: "none"
 
 environment:
@@ -8,6 +8,25 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # Core audio & background playback
+  just_audio: ^0.9.36
+  audio_service: ^0.18.12
+  audio_session: ^0.1.18
+
+  # Device media access & permissions
+  on_audio_query: ^2.9.0
+  permission_handler: ^11.0.1
+
+  # State management & utilities
+  provider: ^6.1.1
+  path_provider: ^2.1.1
+  shared_preferences: ^2.2.2
+
+  # UI & animations
+  flutter_staggered_animations: ^1.1.1
+  cached_network_image: ^3.3.1
+  flutter_slidable: ^3.0.1
 
 flutter:
   uses-material-design: true

@@ -1,0 +1,68 @@
+import 'package:on_audio_query/on_audio_query.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../models/song_model.dart';
+
+class MusicLibraryService {
+  final OnAudioQuery _audioQuery = OnAudioQuery();
+
+  Future<bool> requestPermissions() async {
+    final status = await Permission.storage.request();
+    if (status.isGranted) {
+      return true;
+    }
+    return await Permission.audio.request().then((value) => value.isGranted);
+  }
+
+  Future<List<SongModelExt>> getAllSongs() async {
+    final List<SongModel> songs = await _audioQuery.querySongs(
+      sortType: SongSortType.TITLE,
+      orderType: OrderType.ASC_OR_SMALLER,
+      uriType: UriType.EXTERNAL,
+      ignoreCase: true,
+    );
+    return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
+  }
+
+  Future<List<ArtistModel>> getArtists() async {
+    return await _audioQuery.queryArtists(
+      sortType: ArtistSortType.ARTIST,
+      orderType: OrderType.ASC_OR_SMALLER,
+      uriType: UriType.EXTERNAL,
+    );
+  }
+
+  Future<List<SongModelExt>> getSongsByArtist(int artistId) async {
+    final List<SongModel> songs = await _audioQuery.queryAudiosFrom(
+      AudiosFromType.ARTIST_ID,
+      artistId,
+      sortType: SongSortType.TITLE,
+      orderType: OrderType.ASC_OR_SMALLER,
+    );
+    return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
+  }
+
+  Future<List<FolderModel>> getFolders() async {
+    return await _audioQuery.queryAllPath();
+  }
+
+  Future<List<SongModelExt>> getSongsFromFolder(String path) async {
+    final List<SongModel> songs = await _audioQuery.querySongs(
+      path: path,
+      sortType: SongSortType.TITLE,
+      uriType: UriType.EXTERNAL,
+    );
+    return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
+  }
+
+  Future<bool> renameSong(SongModelExt song, String newName) async {
+    // On Android 10+ renaming requires special handling (MediaStore API)
+    // For simplicity, we'll show a toast that this is a demo limitation
+    // In production, use MediaStore or content resolver.
+    return false;
+  }
+
+  Future<bool> deleteSong(String uri) async {
+    // Same as rename – demo limitation
+    return false;
+  }
+}
