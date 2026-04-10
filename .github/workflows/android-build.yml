@@ -24,29 +24,53 @@ jobs:
 
     - run: flutter pub get
 
-    # Fix on_audio_query_android namespace issue
-    - name: Patch on_audio_query_android plugin
+    # Fix on_audio_query_android namespace (still needed)
+    - name: Patch on_audio_query_android plugin (namespace)
       run: |
-        # Locate the plugin directory
         PLUGIN_PATH=$(find ~/.pub-cache -type d -path "*/on_audio_query_android-*" | head -1)
         if [ -d "$PLUGIN_PATH" ]; then
           GRADLE_FILE="$PLUGIN_PATH/android/build.gradle"
-          echo "Patching $GRADLE_FILE"
-          
-          # Check if namespace already present
           if grep -q "namespace" "$GRADLE_FILE"; then
-            echo "Namespace already exists. Skipping."
+            echo "Namespace already exists."
           else
-            # Insert 'namespace "com.lucasjosino.on_audio_query"' after 'android {' line
             sed -i '/^android {/a \    namespace "com.lucasjosino.on_audio_query"' "$GRADLE_FILE"
             echo "Namespace added."
           fi
-          
-          # Verify
-          cat "$GRADLE_FILE" | head -20
         else
           echo "Plugin directory not found!"
           exit 1
+        fi
+
+    # Fix JVM target compatibility for Kotlin and Java
+    - name: Align Kotlin JVM target to 1.8
+      run: |
+        # For projects using build.gradle.kts (Flutter default)
+        if [ -f android/build.gradle.kts ]; then
+          # Add subprojects block to set Kotlin JVM target
+          cat >> android/build.gradle.kts << 'EOF'
+
+        subprojects {
+            tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+                kotlinOptions {
+                    jvmTarget = "1.8"
+                }
+            }
+        }
+        EOF
+        fi
+        
+        # Also handle legacy build.gradle (just in case)
+        if [ -f android/build.gradle ]; then
+          cat >> android/build.gradle << 'EOF'
+
+        subprojects {
+            tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                kotlinOptions {
+                    jvmTarget = "1.8"
+                }
+            }
+        }
+        EOF
         fi
 
     - run: flutter build apk --release
