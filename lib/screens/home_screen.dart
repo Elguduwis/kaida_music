@@ -18,16 +18,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MusicProvider>().loadSongs();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final provider = context.watch<MusicProvider>();
+    
     return Scaffold(
       body: Column(
         children: [
@@ -48,27 +41,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
               onChanged: (value) {
-                // TODO: implement search filtering in tabs
+                // TODO: implement search filtering
               },
             ),
           ),
-          // Tab content
+          // Tab content with loading/error states
           Expanded(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: const [
-                AllSongsTab(),
-                ArtistsTab(),
-                FoldersTab(),
-              ],
-            ),
+            child: _buildContent(provider),
           ),
         ],
       ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Mini player (visible when a song is selected)
+          // Mini player
           if (provider.currentSong != null)
             GestureDetector(
               onTap: () {
@@ -91,7 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   children: [
                     const SizedBox(width: 12),
-                    // Album art placeholder
                     Container(
                       width: 48,
                       height: 48,
@@ -151,6 +136,89 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildContent(MusicProvider provider) {
+    if (provider.isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading your music library...'),
+          ],
+        ),
+      );
+    }
+
+    if (provider.error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                provider.error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => provider.refreshSongs(),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (provider.allSongs.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.music_off,
+              size: 64,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No music files found',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Add some music files to your device',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => provider.refreshSongs(),
+              child: const Text('Refresh'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return IndexedStack(
+      index: _selectedIndex,
+      children: const [
+        AllSongsTab(),
+        ArtistsTab(),
+        FoldersTab(),
+      ],
     );
   }
 }

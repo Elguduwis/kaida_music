@@ -16,6 +16,8 @@ class MusicProvider extends ChangeNotifier {
   Duration _duration = Duration.zero;
   AudioServiceRepeatMode _repeatMode = AudioServiceRepeatMode.none;
   bool _shuffleEnabled = false;
+  bool _isLoading = false;
+  String? _error;
 
   // Getters
   List<SongModelExt> get allSongs => _allSongs;
@@ -27,6 +29,8 @@ class MusicProvider extends ChangeNotifier {
   AudioServiceRepeatMode get repeatMode => _repeatMode;
   bool get shuffleEnabled => _shuffleEnabled;
   AudioPlayerHandler? get audioHandler => _audioHandler;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
 
   MusicProvider() {
     _initAudioHandler();
@@ -43,7 +47,6 @@ class MusicProvider extends ChangeNotifier {
     });
     _audioHandler!.mediaItem.listen((item) {
       if (item != null) {
-        // Find matching song in loaded list
         final found = _allSongs.firstWhere(
           (s) => s.song.id.toString() == item.id,
           orElse: () => SongModelExt.fromMediaItem(item),
@@ -53,7 +56,6 @@ class MusicProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
-    // Use the streams exposed by our custom handler (not .player)
     _audioHandler!.positionStream.listen((pos) {
       _position = pos;
       notifyListeners();
@@ -65,8 +67,25 @@ class MusicProvider extends ChangeNotifier {
   }
 
   Future<void> loadSongs() async {
-    if (await _libraryService.requestPermissions()) {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final hasPermission = await _libraryService.requestPermissions();
+      if (!hasPermission) {
+        _error = 'Storage permission denied';
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       _allSongs = await _libraryService.getAllSongs();
+      _error = null;
+    } catch (e) {
+      _error = 'Failed to load songs: $e';
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
@@ -74,6 +93,8 @@ class MusicProvider extends ChangeNotifier {
   Future<void> playSong(SongModelExt song, {List<SongModelExt>? queue}) async {
     final queueToPlay = queue ?? _allSongs;
     final startIndex = queueToPlay.indexWhere((s) => s.song.id == song.song.id);
+    if (startIndex == -1) return;
+    
     _currentQueue = queueToPlay;
     await _audioHandler?.updatePlaylist(queueToPlay, startIndex: startIndex);
     notifyListeners();
@@ -120,5 +141,9 @@ class MusicProvider extends ChangeNotifier {
     _audioHandler?.updatePlaylist(_currentQueue,
         startIndex: _audioHandler!.currentIndex ?? 0);
     notifyListeners();
+  }
+
+  void refreshSongs() {
+    loadSongs();
   }
 }
