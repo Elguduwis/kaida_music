@@ -63,10 +63,8 @@ class _PermissionGateState extends State<PermissionGate> {
   }
 
   Future<void> _initialize() async {
-    // Wait for audio service to be ready
     final provider = context.read<MusicProvider>();
     
-    // Poll until audio service is ready or timeout
     int retries = 0;
     while (!provider.audioServiceReady && retries < 100) {
       await Future.delayed(const Duration(milliseconds: 100));
@@ -95,19 +93,12 @@ class _PermissionGateState extends State<PermissionGate> {
     final audioStatus = await Permission.audio.status;
     final storageStatus = await Permission.storage.status;
     
-    print('Audio status: $audioStatus');
-    print('Storage status: $storageStatus');
-
     bool granted = audioStatus.isGranted || storageStatus.isGranted;
     
     if (!granted) {
-      // Request both permissions
-      final results = await [
-        Permission.audio.request(),
-        Permission.storage.request(),
-      ].wait;
-      
-      granted = results.any((r) => r.isGranted);
+      final audioResult = await Permission.audio.request();
+      final storageResult = await Permission.storage.request();
+      granted = audioResult.isGranted || storageResult.isGranted;
     }
 
     setState(() {
@@ -182,7 +173,7 @@ class _PermissionGateState extends State<PermissionGate> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Kaida Music needs access to your audio files to find and play your music.',
+                  'Kaida Music needs access to your audio files.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),
