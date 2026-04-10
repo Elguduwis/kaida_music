@@ -9,14 +9,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Core audio & background playback (tested combination)
+  # Core audio & background playback
   just_audio: ^0.9.36
   audio_service: ^0.18.12
   audio_session: ^0.1.18
 
-  # Device media access (latest stable)
+  # Device media access (has built-in permission handling)
   on_audio_query: ^2.9.0
-  permission_handler: ^11.0.1
 
   # State management & utilities
   provider: ^6.1.1

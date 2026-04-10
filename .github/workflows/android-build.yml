@@ -71,27 +71,37 @@ jobs:
         }
         ROOT
 
-    # Patch the generated AndroidManifest.xml (don't replace it entirely)
-    - name: Add required permissions to AndroidManifest.xml
+    # Add ALL required permissions to AndroidManifest.xml
+    - name: Add storage permissions to AndroidManifest.xml
       run: |
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         
-        # Add READ_MEDIA_AUDIO permission if not present
+        # Add READ_EXTERNAL_STORAGE (for Android 12 and below)
+        if ! grep -q "READ_EXTERNAL_STORAGE" "$MANIFEST"; then
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />' "$MANIFEST"
+        fi
+        
+        # Add WRITE_EXTERNAL_STORAGE (needed by on_audio_query)
+        if ! grep -q "WRITE_EXTERNAL_STORAGE" "$MANIFEST"; then
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />' "$MANIFEST"
+        fi
+        
+        # Add READ_MEDIA_AUDIO (for Android 13+)
         if ! grep -q "READ_MEDIA_AUDIO" "$MANIFEST"; then
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />' "$MANIFEST"
         fi
         
-        # Add POST_NOTIFICATIONS permission if not present
+        # Add POST_NOTIFICATIONS for media controls
         if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST"; then
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />' "$MANIFEST"
         fi
         
-        # Add FOREGROUND_SERVICE permission if not present
+        # Add FOREGROUND_SERVICE for audio playback
         if ! grep -q "FOREGROUND_SERVICE" "$MANIFEST"; then
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />' "$MANIFEST"
         fi
         
-        # Add WAKE_LOCK permission if not present
+        # Add WAKE_LOCK to keep device awake during playback
         if ! grep -q "WAKE_LOCK" "$MANIFEST"; then
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.WAKE_LOCK" />' "$MANIFEST"
         fi
@@ -101,7 +111,7 @@ jobs:
           sed -i 's/<application/<application android:requestLegacyExternalStorage="true"/' "$MANIFEST"
         fi
         
-        echo "Updated AndroidManifest.xml:"
+        echo "=== AndroidManifest.xml contents ==="
         cat "$MANIFEST"
 
     - run: flutter build apk --release

@@ -1,41 +1,35 @@
 import 'package:on_audio_query/on_audio_query.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/song_model.dart';
 
 class MusicLibraryService {
   final OnAudioQuery _audioQuery = OnAudioQuery();
 
+  /// Use the plugin's built-in permission request method
   Future<bool> requestPermissions() async {
-    print('=== MusicLibraryService: Requesting permissions ===');
-    
-    // Check current states
-    final audioStatus = await Permission.audio.status;
-    final storageStatus = await Permission.storage.status;
-    
-    print('Current audio status: $audioStatus');
-    print('Current storage status: $storageStatus');
-    
-    // If already granted, return true
-    if (audioStatus.isGranted || storageStatus.isGranted) {
-      print('Permission already granted');
-      return true;
+    try {
+      // This is the official way to request permissions with on_audio_query
+      final hasPermission = await _audioQuery.permissionsRequest();
+      return hasPermission ?? false;
+    } catch (e) {
+      print('Permission request error: $e');
+      return false;
     }
-    
-    // Try audio permission
-    print('Requesting audio permission...');
-    final audioResult = await Permission.audio.request();
-    print('Audio request result: $audioResult');
-    if (audioResult.isGranted) return true;
-    
-    // Try storage permission as fallback
-    print('Requesting storage permission...');
-    final storageResult = await Permission.storage.request();
-    print('Storage request result: $storageResult');
-    return storageResult.isGranted;
+  }
+
+  /// Alternative: check and request with retry
+  Future<bool> checkAndRequestPermissions({bool retry = false}) async {
+    try {
+      final hasPermission = await _audioQuery.checkAndRequest(
+        retryRequest: retry,
+      );
+      return hasPermission ?? false;
+    } catch (e) {
+      print('Check and request error: $e');
+      return false;
+    }
   }
 
   Future<List<SongModelExt>> getAllSongs() async {
-    print('=== Getting all songs ===');
     try {
       final List<SongModel> songs = await _audioQuery.querySongs(
         sortType: SongSortType.TITLE,
@@ -43,7 +37,6 @@ class MusicLibraryService {
         uriType: UriType.EXTERNAL,
         ignoreCase: true,
       );
-      print('Found ${songs.length} songs');
       return songs.map((s) => SongModelExt.fromSongModel(s)).toList();
     } catch (e) {
       print('Error getting songs: $e');

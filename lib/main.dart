@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'providers/music_provider.dart';
 import 'screens/home_screen.dart';
+import 'services/music_library_service.dart';
 
 void main() {
   runApp(const KaidaMusicApp());
@@ -49,70 +49,38 @@ class PermissionGate extends StatefulWidget {
 class _PermissionGateState extends State<PermissionGate> {
   bool _isLoading = true;
   bool _hasPermission = false;
-  String _debugInfo = '';
+  final MusicLibraryService _service = MusicLibraryService();
 
   @override
   void initState() {
     super.initState();
-    _checkAndRequestPermissions();
+    _requestPermission();
   }
 
-  Future<void> _checkAndRequestPermissions() async {
+  Future<void> _requestPermission() async {
     setState(() {
       _isLoading = true;
     });
 
-    // Check all relevant permission states
-    final audioStatus = await Permission.audio.status;
-    final storageStatus = await Permission.storage.status;
-    final mediaStatus = await Permission.mediaLibrary.status;
+    // Use the plugin's built-in permission request
+    final hasPermission = await _service.requestPermissions();
     
-    _debugInfo = '''
-Audio: $audioStatus
-Storage: $storageStatus
-Media: $mediaStatus
-    ''';
-
-    print('Permission Statuses:');
-    print('Audio: $audioStatus');
-    print('Storage: $storageStatus');
-    print('Media: $mediaStatus');
-
-    // Try multiple permission approaches
-    bool granted = false;
-    
-    // Try audio first
-    if (audioStatus.isGranted) {
-      granted = true;
+    if (!hasPermission) {
+      // Try the alternative method with retry
+      final retryPermission = await _service.checkAndRequestPermissions(retry: true);
+      setState(() {
+        _hasPermission = retryPermission;
+        _isLoading = false;
+      });
     } else {
-      final audioResult = await Permission.audio.request();
-      print('Audio request result: $audioResult');
-      if (audioResult.isGranted) granted = true;
-    }
-    
-    // If audio didn't work, try storage
-    if (!granted) {
-      final storageResult = await Permission.storage.request();
-      print('Storage request result: $storageResult');
-      if (storageResult.isGranted) granted = true;
-    }
-    
-    // Last resort: try mediaLibrary
-    if (!granted) {
-      final mediaResult = await Permission.mediaLibrary.request();
-      print('Media request result: $mediaResult');
-      if (mediaResult.isGranted) granted = true;
+      setState(() {
+        _hasPermission = true;
+        _isLoading = false;
+      });
     }
 
-    setState(() {
-      _hasPermission = granted;
-      _isLoading = false;
-    });
-
-    if (granted) {
+    if (_hasPermission) {
       _loadMusic();
-    } else {
-      print('All permission requests denied');
     }
   }
 
@@ -125,18 +93,14 @@ Media: $mediaStatus
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
+      return const Scaffold(
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 20),
-              Text(
-                'Checking permissions...\n$_debugInfo',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12),
-              ),
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text('Requesting permissions...'),
             ],
           ),
         ),
@@ -151,26 +115,28 @@ Media: $mediaStatus
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.music_off, size: 80, color: Colors.grey),
+                const Icon(Icons.folder_off, size: 80, color: Colors.grey),
                 const SizedBox(height: 20),
                 const Text(
-                  'Permission Status',
+                  'Storage Permission Required',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  _debugInfo,
+                const Text(
+                  'Kaida Music needs access to your device storage to find and play music files.',
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(
-                  onPressed: _checkAndRequestPermissions,
-                  child: const Text('Retry'),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => openAppSettings(),
-                  child: const Text('Open App Settings'),
+                  onPressed: _requestPermission,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE53935),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  ),
+                  child: const Text('Grant Permission'),
                 ),
               ],
             ),
